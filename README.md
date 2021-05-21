@@ -27,6 +27,14 @@ sitemap:
     change_frequency_name: "change_frequency"
     priority_name: "priority"
     lastmod_name: "lastmod"
+    frequency:
+        posts: "monthly"
+        pages: "yearly"
+        index: "monthly" 
+    priority: 
+        posts: 0.5
+        pages: 0.3
+        index: 0.4
 ```
 
 Customizations:

@@ -62,21 +62,33 @@ module Jekyll
         LASTMOD_NAME = "lastmod"
         
         # Valid values allowed by sitemap.xml spec for change frequencies
-        VALID_CHANGE_FREQUENCY_VALUES = ["always", "hourly", "daily", "weekly", "monthly", "yearly", "never"] 
+        VALID_FREQUENCY_VALUES = [ "always", "hourly", "daily", "weekly", "monthly", "yearly", "never" ] 
+
+        def load_config(site)
+            sitemap_config = site.config['sitemap'] || {}
+            sitemap_config['frequency'] = sitemap_config['frequency'] || {}
+            sitemap_config['priority'] = sitemap_config['priority'] || {}
+            @config = {}
+            @config['filename'] = sitemap_config['filename'] || SITEMAP_FILE_NAME
+            @config['exclude'] = sitemap_config['exclude'] || EXCLUDE
+            @config['include_posts'] = sitemap_config['include_posts'] || INCLUDE_POSTS
+            @config['lastmod_name'] = sitemap_config['lastmod_name'] || LASTMOD_NAME
+            @config['frequency_posts'] = sitemap_config['frequency']['posts'] || nil
+            @config['frequency_pages'] = sitemap_config['frequency']['pages'] || nil
+            @config['frequency_index'] = sitemap_config['frequency']['index'] || nil
+            @config['priority_posts'] = sitemap_config['priority']['posts'] || nil
+            @config['priority_pages'] = sitemap_config['priority']['pages'] || nil
+            @config['priority_index'] = sitemap_config['priority']['index'] || nil
+            @config['change_frequency_name'] = sitemap_config['change_frequency_name'] || CHANGE_FREQUENCY_NAME
+            @config['priority_name'] = sitemap_config['priority_name'] || PRIORITY_NAME
+        end
 
         # Goes through pages and posts and generates sitemap.xml file
         #
         # Returns nothing
         def generate(site)
             # Configuration
-            sitemap_config = site.config['sitemap'] || {}
-            @config = {}
-            @config['filename'] = sitemap_config['filename'] || SITEMAP_FILE_NAME
-            # @config['change_frequency_name'] = sitemap_config['change_frequency_name'] || CHANGE_FREQUENCY_NAME
-            # @config['priority_name'] = sitemap_config['priority_name'] || PRIORITY_NAME
-            @config['exclude'] = sitemap_config['exclude'] || EXCLUDE
-            @config['include_posts'] = sitemap_config['include_posts'] || INCLUDE_POSTS
-            @config['lastmod_name'] = sitemap_config['lastmod_name'] || LASTMOD_NAME
+            load_config(site)
 
             # Initialise the XML document
             sitemap = REXML::Document.new << REXML::XMLDecl.new("1.0", "UTF-8")
@@ -156,30 +168,13 @@ module Jekyll
             else
                 lastmod.text = post.date.iso8601
             end
-            url.add_element(lastmod) 
-
-            # if (post.data[@config['change_frequency_name']])
-            #     change_frequency = post.data[@config['change_frequency_name']].downcase
-                
-            #     if (valid_change_frequency?(change_frequency))
-            #         changefreq = REXML::Element.new "changefreq"
-            #         changefreq.text = change_frequency
-            #         url.add_element(changefreq)
-            #     else
-            #         puts "ERROR: Invalid Change Frequency In #{post.name}"
-            #     end
-            # end
-
-            # if (post.data[@config['priority_name']])
-            #     priority_value = post.data[@config['priority_name']]
-            #     if valid_priority?(priority_value)
-            #         priority = REXML::Element.new "priority"
-            #         priority.text = post.data[@config['priority_name']]
-            #         url.add_element(priority)
-            #     else
-            #         puts "ERROR: Invalid Priority In #{post.name}"
-            #     end
-            # end
+            url.add_element(lastmod)
+            # Generate the changefreq value
+            changefreq = fill_change_frequency(post,@config['frequency_posts'])
+            url.add_element(changefreq) if changefreq
+            # Generate the priority value
+            priority = fill_priority(post,@config['priority_posts'])
+            url.add_element(priority) if priority
 
             url
         end
@@ -197,29 +192,12 @@ module Jekyll
             # Generate the lastmod value
             lastmod = fill_last_modified_page(site, page)
             url.add_element(lastmod) if lastmod
-
-            # if (page.data[@config['change_frequency_name']])
-            #     change_frequency = page.data[@config['change_frequency_name']].downcase
-                
-            #     if (valid_change_frequency?(change_frequency))
-            #         changefreq = REXML::Element.new "changefreq"
-            #         changefreq.text = change_frequency
-            #         url.add_element(changefreq)
-            #     else
-            #         puts "ERROR: Invalid Change Frequency In #{page.name}"
-            #     end
-            # end
-
-            # if (page.data[@config['priority_name']])
-            #     priority_value = page.data[@config['priority_name']]
-            #     if valid_priority?(priority_value)
-            #         priority = REXML::Element.new "priority"
-            #         priority.text = page.data[@config['priority_name']]
-            #         url.add_element(priority)
-            #     else
-            #         puts "ERROR: Invalid Priority In #{page.name}"
-            #     end
-            # end
+            # Generate the changefreq value
+            changefreq = fill_change_frequency(page,@config['frequency_pages'])
+            url.add_element(changefreq) if changefreq
+            # Generate the priority value
+            priority = fill_priority(page,@config['priority_pages'])
+            url.add_element(priority) if priority
 
             url
         end
@@ -239,8 +217,6 @@ module Jekyll
         #
         # Returns lastmod REXML::Element or nil
         def fill_last_modified_page(site, page)
-            # puts page.name
-            # puts page.to_yaml
             lastmod = REXML::Element.new "lastmod"
             if (page.data[@config['lastmod_name']])
                 lastmod.text = page.data[@config['lastmod_name']].iso8601
@@ -260,6 +236,58 @@ module Jekyll
             end
 =end
             lastmod
+        end
+
+        # Fill changefreq XML element from the config or the page.
+        #
+        # Returns lastmod REXML::Element or nil
+        def fill_change_frequency(page_or_post, default_freq)
+            changefreq = nil
+            if (page_or_post.data[@config['change_frequency_name']])
+                change_frequency = page_or_post.data[@config['change_frequency_name']].downcase
+                if (valid_change_frequency?(change_frequency))
+                    changefreq = REXML::Element.new "changefreq"
+                    changefreq.text = change_frequency
+                else
+                    puts "ERROR: Invalid change frequency in #{page_or_post.name}: #{change_frequency}"
+                end
+            elsif (default_freq)
+                change_frequency = default_freq
+                if (valid_change_frequency?(change_frequency))
+                    changefreq = REXML::Element.new "changefreq"
+                    changefreq.text = change_frequency
+                else
+                    puts "ERROR: Invalid change frequency in configuration: #{change_frequency}"
+                end
+            end
+
+            changefreq
+        end
+
+        # Fill priority XML element from the config or the page.
+        #
+        # Returns lastmod REXML::Element or nil
+        def fill_priority(page_or_post, default_prio)
+            priority = nil
+            if (page_or_post.data[@config['priority_name']])
+                input_priority = page_or_post.data[@config['priority_name']]
+                if (valid_priority?(input_priority))
+                    priority = REXML::Element.new "priority"
+                    priority.text = input_priority
+                else
+                    puts "ERROR: Invalid priority in #{page_or_post.name}: #{input_priority}"
+                end
+            elsif (default_prio)
+                input_priority = default_prio
+                if (valid_priority?(input_priority))
+                    priority = REXML::Element.new "priority"
+                    priority.text = input_priority
+                else
+                    puts "ERROR: Invalid change frequency in configuration: #{input_priority}"
+                end
+            end
+
+            priority
         end
 
         # Go through the page/post and any implemented layouts and get the latest
@@ -304,7 +332,7 @@ module Jekyll
         #
         # Returns boolean
         def valid_change_frequency?(change_frequency)
-            VALID_CHANGE_FREQUENCY_VALUES.include? change_frequency
+            VALID_FREQUENCY_VALUES.include? change_frequency
         end
 
         # Is the priority value provided valid according to the spec
