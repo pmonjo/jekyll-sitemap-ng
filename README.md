@@ -26,6 +26,7 @@ sitemap:
         - "/index.html"
     change_frequency_name: "change_frequency"
     priority_name: "priority"
+    lastmod_name: "lastmod"
 ```
 
 Customizations:
@@ -36,7 +37,8 @@ Notes:
 ------
 1. The last modified date is determined by the latest date of the following: system modified date of the page or post, system modified date of included layout, system modified date of included layout within that layout, ...
 
-Author: Michael Levin ([http://www.kinnetica.com](http://www.kinnetica.com))
-Configuration Update: Daniel Groves ([http://danielgroves.net](http://danielgroves.net))
+Author: Pedro Monjo ([https://www.pedromonjo.com](https://www.pedromonjo.com))
+
+Based on original plugin by Michael Levin ([http://www.kinnetica.com](http://www.kinnetica.com))
 
 Distributed Under A [Creative Commons](http://creativecommons.org/licenses/by/3.0/) License
