@@ -102,6 +102,7 @@ module Jekyll
             # Insert all posts and pages as children of the main XML node
             fill_posts(site, urlset)
             fill_pages(site, urlset)
+            puts "Last modified date: " + find_latest_date(site).iso8601
 
             # Insert the XML node into the XML document
             sitemap.add_element(urlset)
@@ -132,9 +133,6 @@ module Jekyll
                     url = fill_url_post(site, post)
                     urlset.add_element(url)
                 end
-
-                date = File.mtime(post.path)
-                last_modified_date = date if last_modified_date == nil or date > last_modified_date
             end
         end
 
@@ -222,19 +220,10 @@ module Jekyll
                 lastmod.text = page.data[@config['lastmod_name']].iso8601
             else
                 date = File.mtime(page.path)
-                latest_date = find_latest_date(date, site, page)
-                lastmod.text = latest_date.iso8601
+#                latest_date = find_latest_date(date, site, page)
+                lastmod.text = date.iso8601
             end
 
-=begin             
-            if posts_included?(site, page.path_to_source)
-                # We want to take into account the last post date
-                final_date = greater_date(latest_date, @last_modified_post_date)
-                lastmod.text = final_date.iso8601
-            else
-                lastmod.text = latest_date.iso8601
-            end
-=end
             lastmod
         end
 
@@ -243,7 +232,7 @@ module Jekyll
         # Returns lastmod REXML::Element or nil
         def fill_change_frequency(page_or_post, default_freq)
             changefreq = nil
-            if (page_or_post.data[@config['change_frequency_name']])
+            if page_or_post.data[@config['change_frequency_name']]
                 change_frequency = page_or_post.data[@config['change_frequency_name']].downcase
                 if (valid_change_frequency?(change_frequency))
                     changefreq = REXML::Element.new "changefreq"
@@ -269,7 +258,7 @@ module Jekyll
         # Returns lastmod REXML::Element or nil
         def fill_priority(page_or_post, default_prio)
             priority = nil
-            if (page_or_post.data[@config['priority_name']])
+            if page_or_post.data[@config['priority_name']]
                 input_priority = page_or_post.data[@config['priority_name']]
                 if (valid_priority?(input_priority))
                     priority = REXML::Element.new "priority"
@@ -290,31 +279,40 @@ module Jekyll
             priority
         end
 
-        # Go through the page/post and any implemented layouts and get the latest
-        # modified date
+        # Go through all pages, posts and layouts and get the latest modified date
         #
         # Returns formatted output of latest date of page/post and any used layouts
-        def find_latest_date(latest_date, site, page_or_post)
-            layouts = site.layouts
-            layout = layouts[page_or_post.data["layout"]]
-            while layout
-                date = File.mtime(layout.path)
-                latest_date = date if (date > latest_date)
-                layout = layouts[layout.data["layout"]]
+        def find_latest_date(site)
+            latest_date = nil
+            # Start iterating over all layouts
+            # puts site.layouts.to_yaml
+            # site.layouts.each do |layout|
+            #     date = File.mtime(layout.path)
+            #     latest_date = date if (latest_date == nil or date > latest_date)
+            # end
+            # Now is the time of the posts
+            site.collections["posts"].docs.each do |post|
+                if (post.data[@config['lastmod_name']])
+                    date = post.data[@config['lastmod_name']]
+                else
+                    date = post.date
+                end
+                latest_date = date if (latest_date == nil or date > latest_date)
+            end
+            # And, finally, the pages
+            site.pages.each do |page|
+                date = nil
+                if (page.data[@config['lastmod_name']])
+                    date = page.data[@config['lastmod_name']]
+                elsif File.exists?(page.path)
+                    date = File.mtime(page.path)
+                end
+                if (date != nil and (latest_date == nil or date > latest_date))
+                    latest_date = date
+                end
             end
 
             latest_date
-        end
-
-        # Which of the two dates is later
-        #
-        # Returns latest of two dates
-        def greater_date(date1, date2)
-            if (date1 >= date2) 
-                date1
-            else 
-                date2 
-            end
         end
 
         # Is the page or post listed as something we want to exclude?
