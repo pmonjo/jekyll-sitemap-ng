@@ -104,8 +104,7 @@ module Jekyll
 
             # Insert all posts and pages as children of the main XML node
             fill_posts(site, urlset)
-            fill_pages(site, urlset)
-            puts "Last modified date: " + find_latest_date(site).iso8601
+            fill_pages_index(site, urlset)
 
             # Insert the XML node into the XML document
             sitemap.add_element(urlset)
@@ -132,21 +131,25 @@ module Jekyll
             # Iterate through all posts
             site.collections["posts"].docs.each do |post|
                 # Only process non-excluded posts
-                if !excluded?(site, post.name)
+                if !excluded?(post.data['title'])
                     url = fill_url_post(site, post)
                     urlset.add_element(url)
                 end
             end
         end
 
-        # Create url elements for all the normal pages and find the date of the
-        # index to use with the pagination pages
+        # Create url elements for all the normal pages and indexes
         #
-        # Returns last_modified_date of index page
-        def fill_pages(site, urlset)
+        # Returns nothing
+        def fill_pages_index(site, urlset)
+            # Iterate through all pages
             site.pages.each do |page|
-                if !excluded?(site, page.path_to_source) and File.exists?(page.path)
-                    url = fill_url_page(site, page)
+                if !excluded?(page.path_to_source) and File.exists?(page.path)
+                    if posts_included?(page.path_to_source)
+                        url = fill_url_index(site, page)
+                    else
+                        url = fill_url_page(site, page)
+                    end
                     urlset.add_element(url)
                 end
             end
@@ -163,13 +166,8 @@ module Jekyll
             loc = fill_location(site, post)
             url.add_element(loc)
             # Generate the lastmod value
-            lastmod = REXML::Element.new "lastmod"
-            if (post.data[@config['lastmod_name']])
-                lastmod.text = post.data[@config['lastmod_name']].iso8601
-            else
-                lastmod.text = post.date.iso8601
-            end
-            url.add_element(lastmod)
+            lastmod = fill_last_modified_post(post)
+            url.add_element(lastmod) if lastmod
             # Generate the changefreq value
             changefreq = fill_change_frequency(post,@config['frequency_posts'])
             url.add_element(changefreq) if changefreq
@@ -191,7 +189,7 @@ module Jekyll
             loc = fill_location(site, page)
             url.add_element(loc)
             # Generate the lastmod value
-            lastmod = fill_last_modified_page(site, page)
+            lastmod = fill_last_modified_page(page)
             url.add_element(lastmod) if lastmod
             # Generate the changefreq value
             changefreq = fill_change_frequency(page,@config['frequency_pages'])
@@ -203,7 +201,30 @@ module Jekyll
             url
         end
 
-        # Get URL location of page or post 
+        # Fill data of each URL element: location, last modified, change frequency (optional), and priority.
+        # For indexes only.
+        #
+        # Returns url REXML::Element
+        def fill_url_index(site, index)
+            # Create XML node "url"
+            url = REXML::Element.new "url"
+            # Get the "loc" node and add it to the "url" node
+            loc = fill_location(site, index)
+            url.add_element(loc)
+            # Generate the lastmod value
+            lastmod = fill_last_modified_index(site)
+            url.add_element(lastmod) if lastmod
+            # Generate the changefreq value
+            changefreq = fill_change_frequency(index,@config['frequency_index'])
+            url.add_element(changefreq) if changefreq
+            # Generate the priority value
+            priority = fill_priority(index,@config['priority_index'])
+            url.add_element(priority) if priority
+
+            url
+        end
+
+        # Get URL location
         #
         # Returns the location of the page or post
         def fill_location(site, page_or_post)
@@ -214,34 +235,66 @@ module Jekyll
             loc
         end
 
+        # Fill lastmod XML element with the last modified date for the post.
+        # Updates object property @latest_post_date
+        #
+        # Returns lastmod REXML::Element or nil
+        def fill_last_modified_post(post)
+            lastmod = REXML::Element.new "lastmod"
+            if (post.data[@config['lastmod_name']])
+                date = post.data[@config['lastmod_name']]
+            else
+                date = post.date
+            end
+            lastmod.text = date.iso8601
+            @latest_post_date = date if @latest_post_date == nil or date > @latest_post_date
+
+            lastmod
+        end
+
         # Fill lastmod XML element with the last modified date for the page.
         #
         # Returns lastmod REXML::Element or nil
-        def fill_last_modified_page(site, page)
+        def fill_last_modified_page(page)
             lastmod = REXML::Element.new "lastmod"
             if (page.data[@config['lastmod_name']])
                 lastmod.text = page.data[@config['lastmod_name']].iso8601
             else
                 date = File.mtime(page.path)
-#                latest_date = find_latest_date(date, site, page)
                 lastmod.text = date.iso8601
             end
 
             lastmod
         end
 
-        # Fill changefreq XML element from the config or the page.
+        # Fill lastmod XML element with the last modified date for the index.
         #
         # Returns lastmod REXML::Element or nil
-        def fill_change_frequency(page_or_post, default_freq)
+        def fill_last_modified_index(index)
+            lastmod = nil
+            if (index.data[@config['lastmod_name']])
+                lastmod = REXML::Element.new "lastmod"
+                lastmod.text = index.data[@config['lastmod_name']].iso8601
+            elsif @latest_post_date != nil
+                lastmod = REXML::Element.new "lastmod"
+                lastmod.text = @latest_post_date.iso8601
+            end
+
+            lastmod
+        end
+
+        # Fill changefreq XML element from the config or the document.
+        #
+        # Returns lastmod REXML::Element or nil
+        def fill_change_frequency(doc, default_freq)
             changefreq = nil
-            if page_or_post.data[@config['change_frequency_name']]
-                change_frequency = page_or_post.data[@config['change_frequency_name']].downcase
+            if doc.data[@config['change_frequency_name']]
+                change_frequency = doc.data[@config['change_frequency_name']].downcase
                 if (valid_change_frequency?(change_frequency))
                     changefreq = REXML::Element.new "changefreq"
                     changefreq.text = change_frequency
                 else
-                    puts "ERROR: Invalid change frequency in #{page_or_post.name}: #{change_frequency}"
+                    puts "ERROR: Invalid change frequency in #{doc.name}: #{change_frequency}"
                 end
             elsif (default_freq)
                 change_frequency = default_freq
@@ -256,18 +309,18 @@ module Jekyll
             changefreq
         end
 
-        # Fill priority XML element from the config or the page.
+        # Fill priority XML element from the config or the document.
         #
         # Returns lastmod REXML::Element or nil
-        def fill_priority(page_or_post, default_prio)
+        def fill_priority(doc, default_prio)
             priority = nil
-            if page_or_post.data[@config['priority_name']]
-                input_priority = page_or_post.data[@config['priority_name']]
+            if doc.data[@config['priority_name']]
+                input_priority = doc.data[@config['priority_name']]
                 if (valid_priority?(input_priority))
                     priority = REXML::Element.new "priority"
                     priority.text = input_priority
                 else
-                    puts "ERROR: Invalid priority in #{page_or_post.name}: #{input_priority}"
+                    puts "ERROR: Invalid priority in #{doc.name}: #{input_priority}"
                 end
             elsif (default_prio)
                 input_priority = default_prio
@@ -282,51 +335,23 @@ module Jekyll
             priority
         end
 
-        # Go through all pages, posts and layouts and get the latest modified date
-        #
-        # Returns formatted output of latest date of page/post and any used layouts
-        def find_latest_date(site)
-            latest_date = nil
-            # Start iterating over all layouts
-            # puts site.layouts.to_yaml
-            # site.layouts.each do |layout|
-            #     date = File.mtime(layout.path)
-            #     latest_date = date if (latest_date == nil or date > latest_date)
-            # end
-            # Now is the time of the posts
-            site.collections["posts"].docs.each do |post|
-                if (post.data[@config['lastmod_name']])
-                    date = post.data[@config['lastmod_name']]
-                else
-                    date = post.date
-                end
-                latest_date = date if (latest_date == nil or date > latest_date)
-            end
-            # And, finally, the pages
-            site.pages.each do |page|
-                date = nil
-                if (page.data[@config['lastmod_name']])
-                    date = page.data[@config['lastmod_name']]
-                elsif File.exists?(page.path)
-                    date = File.mtime(page.path)
-                end
-                if (date != nil and (latest_date == nil or date > latest_date))
-                    latest_date = date
-                end
-            end
-
-            latest_date
-        end
-
         # Is the page or post listed as something we want to exclude?
         #
         # Returns boolean
-        def excluded?(site, name)
-            @config['exclude'].include? name
+        def excluded?(name)
+            @config['exclude'].each do |pattern|
+                return true if File.fnmatch(pattern,name)
+            end
+
+            false
         end
 
-        def posts_included?(site, name)
-            @config['include_posts'].include? name
+        def posts_included?(name)
+            @config['include_posts'].each do |pattern|
+                return true if File.fnmatch(pattern,name)
+            end
+
+            false
         end
 
         # Is the change frequency value provided valid according to the spec
