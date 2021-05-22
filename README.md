@@ -5,9 +5,9 @@ Sitemap.xml Generator is a Jekyll plugin that generates a sitemap.xml file by tr
 
 How To Use:
 -----------
-1. Copy file into your _plugins folder within your Jekyll project.
+1. Copy file into your _plugins folder within your Jekyll project or add as submodule.
 2. Ensure url is set in your config file (for example `url: http://www.domain.com`)
-3. In your config file, change `sitemap: filename:` if you want your sitemap to be called something other than sitemap.xml.
+3. In your config file, change `sitemap: filename:` if you want your sitemap to be called something other than "sitemap.xml".
 4. Change the `sitemap: exclude:` list to exclude any pages that you don't want in the sitemap. 
 5. Change the `sitemap: include_posts:` list to include any pages that are looping through your posts (e.g. "/index.html", "/notebook/index.md", etc.). This will ensure that right after you make a new post, the last modified date will be updated to reflect the new post.
 6. Run Jekyll: `jekyll build` to re-generate your site.
@@ -40,7 +40,7 @@ sitemap:
 
 Customizations:
 ---------------
-If you want to include the optional changefreq and priority attributes, simply include custom variables in the YAML Front Matter of those files. The names of these custom variables are defined in the config file as `sitemap: change_frequency_name:` and `sitemap: priority_name:`.
+If you want to include the optional `<changefreq>` and `<priority>` attributes, simply include custom variables in the YAML Front Matter of those files. The names of these custom variables are defined in the config file as `sitemap: change_frequency_name:` and `sitemap: priority_name:`. Alternatively, you can set them in the configuration under `sitemap: frequency:` and `sitemap: priority:` as seen in the example above.
 
 Notes:
 ------
@@ -48,6 +48,6 @@ Notes:
 
 Author: Pedro Monjo ([https://www.pedromonjo.com](https://www.pedromonjo.com))
 
-Based on original plugin by Michael Levin ([http://www.kinnetica.com](http://www.kinnetica.com))
+Forked from [Jekyll Plugin: Sitemap.xml](https://github.com/kinnetica/jekyll-plugins) Generator by Michael Levin ([http://www.kinnetica.com](http://www.kinnetica.com))
 
 Distributed Under A [Creative Commons](http://creativecommons.org/licenses/by/3.0/) License

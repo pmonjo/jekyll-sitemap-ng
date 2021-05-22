@@ -1,15 +1,18 @@
 # Sitemap.xml Generator is a Jekyll plugin that generates a sitemap.xml file by 
 # traversing all of the available posts and pages.
 # 
-# See readme file for documenation
+# See README file for documenation
 # 
-# Updated to use config file for settings by Daniel Groves
-# Site: http://danielgroves.net
-# 
+# Author: Pedro Monjo
+# Site: https://www.pedromonjo.com
+#
+# Forked from https://github.com/kinnetica/jekyll-plugins
 # Author: Michael Levin
 # Site: http://www.kinnetica.com
+#
 # Distributed Under A Creative Commons License
 #   - http://creativecommons.org/licenses/by/3.0/
+#
 require 'jekyll/document'
 require 'rexml/document'
 
