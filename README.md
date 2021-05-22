@@ -44,7 +44,7 @@ If you want to include the optional `<changefreq>` and `<priority>` attributes, 
 
 Notes:
 ------
-1. The last modified date is determined by the latest date of the following: system modified date of the page or post, system modified date of included layout, system modified date of included layout within that layout, ...
+1. URLs that match include_posts are considered indexes, for frequency and priority.
 
 Author: Pedro Monjo ([https://www.pedromonjo.com](https://www.pedromonjo.com))
 

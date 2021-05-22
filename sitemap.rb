@@ -38,7 +38,12 @@ module Jekyll
         end
 
         def location_on_server(my_url)
-            location = "#{my_url}#{url}"
+            # There seems to be some weird bug with category paths
+            if site.config["category_path"] and path_to_source.start_with?(site.config["category_path"])
+                location = "#{my_url}/#{path_to_source}"
+            else
+                location = "#{my_url}#{url}"
+            end
             location.gsub(/index.html$/, "")
         end
     end
@@ -227,10 +232,10 @@ module Jekyll
         # Get URL location
         #
         # Returns the location of the page or post
-        def fill_location(site, page_or_post)
+        def fill_location(site, doc)
             loc = REXML::Element.new "loc"
             url = site.config['url'] + site.config['baseurl']
-            loc.text = page_or_post.location_on_server(url)
+            loc.text = doc.location_on_server(url)
 
             loc
         end
